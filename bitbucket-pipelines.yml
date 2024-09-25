@@ -1,0 +1,172 @@
+image: python
+commonBuildAndTest: &commonBuildAndTest
+  script:
+    # install boto3 and aws cli
+    - pip install awscli
+    - pip install boto3
+    # condfigure aws credentians and profile
+    - mkdir ~/.aws/
+    - cat $AWS_CONFIGS_FILE > ~/.aws/config
+    - aws configure set aws_access_key_id $USER_AWS_ACCESS_ID
+    - aws configure set aws_secret_access_key $USER_AWS_SECRET_ACCESS_KEY
+    - aws sts get-caller-identity
+    # configuring cloud custodian
+    - python3 -m venv custodian
+    - source custodian/bin/activate
+    - pip install c7n
+    - mkdir output
+    - mkdir dryrun
+    # format/configure policy file locally, substitute bitbucket variables
+    - cat $CUSTODIAN_POLICY > ~/custodian_policy.yaml
+    - cat ~/custodian_policy.yaml
+    - sed -i "s|C7_LAMBDA_ROLE|$USER_C7_LAMBDA_ROLE|g" ~/custodian_policy.yaml
+    - sed -i "s|SQS_URL|$USER_SQS_URL|g" ~/custodian_policy.yaml
+    - sed -i "s|SLACK_HOOK_URL|$USER_SLACK_HOOK_URL|g" ~/custodian_policy.yaml
+    - sed -i "s|USER_RECEPIENT_EMAIL|$USER_USER_RECEPIENT_EMAIL|g" ~/custodian_policy.yaml
+    - cat ~/custodian_policy.yaml
+    # adding slack and email format files
+    - cat configs/slack.j2  > ~/slack.j2
+    - cat configs/email.html.j2  > ~/email.html.j2
+    # run policy and log data
+    - custodian validate ~/custodian_policy.yaml
+    - custodian run -v --dryrun --output-dir=./dryrun ~/custodian_policy.yaml
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+commonBuildAndDeployUser: &commonBuildAndDeployUser
+  script:
+    # install boto3 and aws cli
+    - pip install awscli
+    - pip install boto3
+    # condfigure aws credentians and profile
+    - mkdir ~/.aws/
+    - cat $AWS_CONFIGS_FILE > ~/.aws/config
+    - aws configure set aws_access_key_id $USER_AWS_ACCESS_ID
+    - aws configure set aws_secret_access_key $USER_AWS_SECRET_ACCESS_KEY
+    - aws sts get-caller-identity
+    # configuring cloud custodian
+    - python3 -m venv custodian
+    - source custodian/bin/activate
+    - pip install c7n
+    - mkdir output
+    - mkdir dryrun
+    # format/configure policy file locally, substitute bitbucket variables
+    - cat $CUSTODIAN_POLICY > ~/custodian_policy.yaml
+    - cat ~/custodian_policy.yaml
+    - sed -i "s|C7_LAMBDA_ROLE|$USER_C7_LAMBDA_ROLE|g" ~/custodian_policy.yaml
+    - sed -i "s|SQS_URL|$USER_SQS_URL|g" ~/custodian_policy.yaml
+    - sed -i "s|SLACK_HOOK_URL|$USER_SLACK_HOOK_URL|g" ~/custodian_policy.yaml
+    - sed -i "s|USER_RECEPIENT_EMAIL|$USER_USER_RECEPIENT_EMAIL|g" ~/custodian_policy.yaml
+    - cat ~/custodian_policy.yaml
+    # adding slack and email format files
+    - cat configs/slack.j2  > ~/slack.j2
+    - cat configs/email.html.j2  > ~/email.html.j2
+    # run policy and log data
+    - custodian validate ~/custodian_policy.yaml
+    - custodian run -v --dryrun --output-dir=./dryrun ~/custodian_policy.yaml
+    # run policy and log data
+    - custodian validate ~/custodian_policy.yaml
+    - custodian run -v --dryrun --output-dir=./dryrun ~/custodian_policy.yaml
+    - custodian run -v --output-dir=./output ~/custodian_policy.yaml
+    - cat `find ./output -type f` # yaml anchor can't have {}
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+pipelines:
+  custom:
+    dryrun:
+      - parallel:
+          - step:
+              name: Execute Instance & AMI Report Policy
+              deployment: User_Instance_AMI_Report
+              caches:
+                - pip
+              !!merge <<: *commonBuildAndTest
+          - step:
+              name: Execute Open Security Group Policy
+              deployment: User_Open_Security_Group
+              caches:
+                - pip
+              !!merge <<: *commonBuildAndTest
+          - step:
+              name: Execute Root Login Detected Policy
+              deployment: User_Root_Login_Detected
+              caches:
+                - pip
+              !!merge <<: *commonBuildAndTest
+          - step:
+              # test this more before adding to production/dev/uat
+              name: Execute Delete Unused SG's Policy
+              deployment: User_Delete_Unused_SG
+              caches:
+                - pip
+              !!merge <<: *commonBuildAndTest
+          - step:
+              name: Execute Open SSH RDP SG's Policy
+              deployment: User_Open_SSH_RDP_SGs
+              caches:
+                - pip
+              !!merge <<: *commonBuildAndTest
+          - step:
+              name: Execute Disable Inactive Users Policy
+              deployment: User_Disable_Inactive_Usr
+              caches:
+                - pip
+              !!merge <<: *commonBuildAndTest
+          - step:
+              name: Execute Failed Login Detected Policy
+              deployment: User_User_Failed_Login
+              caches:
+                - pip
+              !!merge <<: *commonBuildAndTest
+  branches: #  i added manual triggers because of build minutes limit of 50 per month
+    user:
+      - parallel:
+          - step:
+              name: Execute Instance & AMI Report Policy
+              trigger: manual
+              deployment: User_Instance_AMI_Report
+              caches:
+                - pip
+              !!merge <<: *commonBuildAndDeployUser
+          - step:
+              name: Execute Open Security Group Policy
+              trigger: manual
+              deployment: User_Open_Security_Group
+              caches:
+                - pip
+              !!merge <<: *commonBuildAndDeployUser
+          - step:
+              name: Execute Root Login Detected Policy
+              trigger: manual
+              deployment: User_Root_Login_Detected
+              caches:
+                - pip
+              !!merge <<: *commonBuildAndDeployUser
+          - step:
+              # test this more before adding to production/dev/uat
+              name: Execute Delete Unused SG's Policy
+              trigger: manual
+              deployment: User_Delete_Unused_SG
+              caches:
+                - pip
+              !!merge <<: *commonBuildAndDeployUser
+          - step:
+              name: Execute Open SSH RDP SG's Policy
+              trigger: manual
+              deployment: User_Open_SSH_RDP_SGs
+              caches:
+                - pip
+              !!merge <<: *commonBuildAndDeployUser
+          - step:
+              name: Execute Disable Inactive Users Policy
+              trigger: manual
+              deployment: User_Disable_Inactive_Usr
+              caches:
+                - pip
+              !!merge <<: *commonBuildAndDeployUser
+          - step:
+              name: Execute Failed Login Detected Policy
+              trigger: manual
+              deployment: User_User_Failed_Login
+              caches:
+                - pip
+              !!merge <<: *commonBuildAndDeployUser

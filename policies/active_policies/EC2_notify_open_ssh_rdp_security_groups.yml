@@ -1,0 +1,48 @@
+policies:
+  - name: open-security-groups-ssh-rdp
+    resource: security-group
+    description: |
+      notify of security groups that have SSH and RDP open to the world
+    mode:
+      type: cloudtrail
+      role: C7_LAMBDA_ROLE
+      events:
+        - source: ec2.amazonaws.com
+          event: AuthorizeSecurityGroupIngress
+          ids: "requestParameters.groupId"
+      tags:
+        owner: RECEPIENT_EMAIL
+    filters:
+      - and:
+          - type: ingress
+            Ports: [22, 3389]
+          - type: ingress
+            Cidr:
+              value_type: cidr
+              op: eq
+              value: 0.0.0.0/0
+    actions:
+      - type: auto-tag-user
+        tag: CreatorName
+      - type: notify
+        priority_header: '3'
+        template: email.html
+        template_format: 'html'
+        violation_desc: Someone created a Security Group with SSH or RDP open to the world
+        action_desc: "This security group is subject to deletion without warning."
+        subject: "Someone created a Security Group with SSH or RDP open to the world in {{ account }} - {{ region }}."
+        to:
+          - RECEPIENT_EMAIL
+        transport:
+          type: sqs
+          queue: SQS_URL
+      - type: notify
+        slack_msg_color: warning
+        template: c7n_slack
+        violation_desc: Someone created a Security Group with SSH or RDP open to the world
+        action_desc: "This security group is subject to deletion without warning."
+        to:
+          - SLACK_HOOK_URL
+        transport:
+          type: sqs
+          queue: SQS_URL

@@ -1,0 +1,504 @@
+# must be launched in every region to really affect each regior
+policies:
+  - name: ec2-terminate-non-standard-region
+    resource: ec2
+    description: |
+      Any EC2 instance launched in a non standard region outside
+      of us-east-2 and us-east-1 will be terminated
+    mode:
+      type: cloudtrail
+      role: arn:aws:iam::005343251202:role/c7-lambda-admin
+      events:
+        - RunInstances
+      tags:
+        custodian: ec2-terminate-non-standard-region
+    filters:
+      - type: event
+        key: "detail.awsRegion"
+        op: not-in
+        value:
+          - us-east-2
+          - us-east-1
+    actions:
+      - type: terminate
+        force: true
+      - type: notify
+        template: email.html
+        priority_header: 1
+        subject: "EC2 SERVER TERMINATED - Non-Standard Region [custodian {{ account }} - {{ region }}]"
+        violation_desc: "Launching resources outside of the standard regions is prohibited"
+        action_desc: "Actions Taken:  Your new EC2 server has been terminated.  Please use regions us-east-1 or us-east-2."
+        to:
+          - user@gmail.com
+          - event-owner
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs
+      - type: notify
+        slack_msg_color: danger
+        template: slack
+        violation_desc: "Launching resources outside of the standard regions is prohibited"
+        action_desc: "Actions Taken:  Your new EC2 server has been terminated.  Please use regions us-east-1 or us-east-2."
+        to:
+          - [SLACK TOKEN]
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs
+  - name: asg-terminate-non-standard-region
+    resource: asg
+    mode:
+      type: cloudtrail
+      role: arn:aws:iam::005343251202:role/c7-lambda-admin
+      events:
+        - source: autoscaling.amazonaws.com
+          event: CreateAutoScalingGroup
+          ids: requestParameters.autoScalingGroupName
+      tags:
+        custodian: asg-terminate-non-standard-region
+    description: |
+      Detect when a new AutoScaling Group is created in a non-standard
+      region us-east-2 and us-east-1 delete it and notify the customer
+    filters:
+      - type: event
+        key: "detail.awsRegion"
+        op: not-in
+        value:
+          - us-east-2
+          - us-east-1
+    actions:
+      - type: delete
+        force: true
+      - type: notify
+        template: email.html
+        priority_header: 1
+        subject: "ASG TERMINATED - Non-Standard Region [custodian {{ account }} - {{ region }}]"
+        violation_desc: "Launching resources outside of the standard regions is prohibited"
+        action_desc: "Actions Taken:  Your new ASG has been terminated.  Please use regions us-east-1 or 2."
+        to:
+          - CloudTeam@Company.com
+          - event-owner
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs
+  - name: app-elb-terminate-non-standard-region
+    resource: app-elb
+    mode:
+      type: cloudtrail
+      role: arn:aws:iam::005343251202:role/c7-lambda-admin
+      events:
+        - source: "elasticloadbalancing.amazonaws.com"
+          event: CreateLoadBalancer
+          ids: "requestParameters.name"
+      tags:
+        custodian: app-elb-terminate-non-standard-region
+    description: |
+      Detect when a new Application Load Balancer Group is created in a non-standard
+      region us-east-2 delete it and notify the customer
+    filters:
+      - type: event
+        key: "detail.awsRegion"
+        op: not-in
+        value:
+          - us-east-2
+          - us-east-1
+    actions:
+      - type: delete
+      - type: notify
+        template: email.html
+        priority_header: 1
+        subject: "App ELB TERMINATED - Non-Standard Region [custodian {{ account }} - {{ region }}]"
+        violation_desc: "Launching resources outside of the standard regions is prohibited"
+        action_desc: "Actions Taken:  Your new App ELB has been deleted.  Please relaunch the App ELB in regions us-east-1 or 2."
+        to:
+          - CloudTeam@Company.com
+          - event-owner
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs
+  - name: elb-terminate-non-standard-region
+    resource: elb
+    mode:
+      type: cloudtrail
+      role: arn:aws:iam::005343251202:role/c7-lambda-admin
+      events:
+        - CreateLoadBalancer
+      tags:
+        custodian: elb-terminate-non-standard-region
+    description: |
+      Detect when a new Load Balancer is created in a non-standard
+      region us-east-2 delete it and notify the customer
+    filters:
+      - type: event
+        key: "detail.awsRegion"
+        op: not-in
+        value:
+          - us-east-2
+          - us-east-1
+    actions:
+      - type: delete
+      - type: notify
+        template: email.html
+        priority_header: 1
+        subject: "ELB TERMINATED - Non-Standard Region [custodian {{ account }} - {{ region }}]"
+        violation_desc: "Launching resources outside of the standard regions is prohibited"
+        action_desc: "Actions Taken:  Your new ELB has been deleted.  Please use regions us-east-1 or 2"
+        to:
+          - CloudTeam@Company.com
+          - event-owner
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs
+  - name: es-terminate-non-standard-region
+    resource: elasticsearch
+    mode:
+      type: cloudtrail
+      role: arn:aws:iam::005343251202:role/c7-lambda-admin
+      events:
+        - CreateElasticsearchDomain
+      tags:
+        custodian: es-terminate-non-standard-region
+    description: |
+      Detect when a new Elasticsearch Domain is created in a non-standard
+      region us-east-2 delete it and notify the customer
+    filters:
+      - type: event
+        key: "detail.awsRegion"
+        op: not-in
+        value:
+          - us-east-2
+          - us-east-1
+    actions:
+      - delete
+      - type: notify
+        template: email.html
+        priority_header: 1
+        subject: "ES DOMAIN TERMINATED - Non-Standard Region [custodian {{ account }} - {{ region }}]"
+        violation_desc: "Launching resources outside of the standard regions is prohibited"
+        action_desc: "Actions Taken:  Your new Elasticsearch Domain has been deleted.  Please use regions us-east-1 or 2"
+        to:
+          - CloudTeam@Company.com
+          - event-owner
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs
+  - name: lambda-terminate-non-standard-region
+    resource: lambda
+    mode:
+      type: cloudtrail
+      role: arn:aws:iam::005343251202:role/c7-lambda-admin
+      events:
+        - source: lambda.amazonaws.com
+          event: CreateFunction20150331
+          ids: "requestParameters.functionName"
+      tags:
+        custodian: lambda-terminate-non-standard-region
+    description: |
+      Detect when a new Lambda Function is created in a non-standard
+      region us-east-2 delete it and notify the customer
+    filters:
+      - type: event
+        key: "detail.awsRegion"
+        op: not-in
+        value:
+          - us-east-2
+          - us-east-1
+      - not:
+          - or:
+              - type: value
+                key: FunctionName
+                op: regex
+                value: ^(custodian?)\w+
+    actions:
+      - delete
+      - type: notify
+        template: email.html
+        priority_header: 1
+        subject: "LAMBDA DELETED - Non-Standard Region [custodian {{ account }} - {{ region }}]"
+        violation_desc: "Launching resources outside of the standard regions is prohibited"
+        action_desc: "Actions Taken:  Your new Lambda Function has been deleted. Please use regions us-east-1 or 2"
+        to:
+          - CloudTeam@Company.com
+          - event-owner
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs
+  - name: rds-terminate-non-standard-region
+    resource: rds
+    mode:
+      type: cloudtrail
+      role: arn:aws:iam::005343251202:role/c7-lambda-admin
+      events:
+        - source: rds.amazonaws.com
+          event: CreateDBInstance
+          ids: "requestParameters.dBInstanceIdentifier"
+      tags:
+        custodian: rds-terminate-non-standard-region
+    description: |
+      Detect when a new RDS is created in a non-standard
+      region us-east-2 delete it and notify the customer
+    filters:
+      - type: event
+        key: "detail.awsRegion"
+        op: not-in
+        value:
+          - us-east-2
+          - us-east-1
+    actions:
+      - type: delete
+        skip-snapshot: true
+      - type: notify
+        template: email.html
+        priority_header: 1
+        subject: "RDS DELETED - Non-Standard Region [custodian {{ account }} - {{ region }}]"
+        violation_desc: "Launching resources outside of the standard regions is prohibited"
+        action_desc: "Actions Taken:  Your new RDS Database has been deleted.  Please relaunch in regions us-east-1 or 2."
+        to:
+          - CloudTeam@Company.com
+          - event-owner
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs
+  - name: rdscluster-terminate-non-standard-region
+    resource: rds-cluster
+    mode:
+      type: cloudtrail
+      role: arn:aws:iam::005343251202:role/c7-lambda-admin
+      events:
+        - CreateCluster
+      tags:
+        custodian: rdscluster-terminate-non-standard-region
+    description: |
+      Detect when a new RDS Cluster is created in a non-standard
+      region us-east-2 delete it and notify the customer
+    filters:
+      - type: event
+        key: "detail.awsRegion"
+        op: not-in
+        value:
+          - us-east-2
+          - us-east-1
+    actions:
+      - type: delete
+        skip-snapshot: true
+        delete-instances: true
+      - type: notify
+        template: email.html
+        priority_header: 1
+        subject: "RDS CLUSTER DELETED - Non-Standard Region [custodian {{ account }} - {{ region }}]"
+        violation_desc: "Launching resources outside of the standard regions is prohibited"
+        action_desc: "Actions Taken:  Your new RDS Database Cluster has been deleted.  Please relaunch in regions us-east-1 or 2."
+        to:
+          - CloudTeam@Company.com
+          - event-owner
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs
+  - name: sg-terminate-non-standard-region
+    resource: security-group
+    mode:
+      type: cloudtrail
+      role: arn:aws:iam::005343251202:role/c7-lambda-admin
+      events:
+        - source: ec2.amazonaws.com
+          event: CreateSecurityGroup
+          ids: "responseElements.groupId"
+      tags:
+        custodian: sg-terminate-non-standard-region
+    description: |
+      Detect when a new Security Group is created in a non-standard
+      region us-east-2 delete it and notify the customer
+    filters:
+      - type: event
+        key: "detail.awsRegion"
+        op: not-in
+        value:
+          - us-east-2
+          - us-east-1
+    actions:
+      - delete
+      - type: notify
+        template: email.html
+        priority_header: 1
+        subject: "SG DELETED - Non-Standard Region [custodian {{ account }} - {{ region }}]"
+        violation_desc: "Launching resources outside of the standard regions is prohibited"
+        action_desc: "Actions Taken:  Your new Security Group has been deleted.  Please recreate in regions us-east-1 or 2."
+        to:
+          - CloudTeam@Company.com
+          - event-owner
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs
+  - name: ami-terminate-non-standard-region
+    resource: ami
+    mode:
+      type: cloudtrail
+      role: arn:aws:iam::005343251202:role/c7-lambda-admin
+      events:
+        - source: "ec2.amazonaws.com"
+          event: "CreateImage"
+          ids: "responseElements.imageId"
+      tags:
+        custodian: ami-terminate-non-standard-region
+    description: |
+      Detect when a new Amazon Machine Image is created in a non-standard
+      region us-east-2 delete it and notify the customer
+    filters:
+      - type: event
+        key: "detail.awsRegion"
+        op: not-in
+        value:
+          - us-east-2
+          - us-east-1
+    actions:
+      - deregister
+      - remove-launch-permissions
+      - type: notify
+        template: email.html
+        priority_header: 1
+        subject: "AMI DELETED - Non-Standard Region [custodian {{ account }} - {{ region }}]"
+        violation_desc: "Launching resources outside of the standard regions is prohibited"
+        action_desc: "Actions Taken:  Your new Amazon Machine Image has been deleted.  Please recreate in regions us-east-1 or 2."
+        to:
+          - CloudTeam@Company.com
+          - event-owner
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs
+  - name: s3-terminate-non-standard-region
+    resource: s3
+    mode:
+      type: cloudtrail
+      role: arn:aws:iam::005343251202:role/c7-lambda-admin
+      events:
+        - CreateBucket
+      timeout: 200
+      tags:
+        custodian: s3-terminate-non-standard-region
+    description: |
+      Detect when a new S3 Bucket is created in a non-standard
+      region us-east-2 delete it and notify the customer
+    filters:
+      - type: event
+        key: "detail.awsRegion"
+        op: not-in
+        value:
+          - us-east-2
+          - us-east-1
+    actions:
+      - type: delete
+        remove-contents: true
+      - type: notify
+        template: email.html
+        priority_header: 1
+        subject: "S3 DELETED - Non-Standard Region [custodian {{ account }} - {{ region }}]"
+        violation_desc: "Launching resources outside of the standard regions is prohibited"
+        action_desc: "Actions Taken:  Your new S3 Bucket has been deleted.  Please recreate in regions us-east-1 or 2."
+        to:
+          - CloudTeam@Company.com
+          - event-owner
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs
+  - name: dynamo-terminate-non-standard-region
+    resource: dynamodb-table
+    mode:
+      type: cloudtrail
+      role: arn:aws:iam::005343251202:role/c7-lambda-admin
+      events:
+        - CreateTable
+      tags:
+        custodian: dynamo-terminate-non-standard-region
+    description: |
+      Detect when a new DynamoDB Table is created in a non-standard
+      region us-east-2 delete it and notify the customer
+    filters:
+      - type: event
+        key: "detail.awsRegion"
+        op: not-in
+        value:
+          - us-east-2
+          - us-east-1
+    actions:
+      - delete
+      - type: notify
+        template: email.html
+        priority_header: 1
+        subject: "DYNAMODB DELETED - Non-Standard Region [custodian {{ account }} - {{ region }}]"
+        violation_desc: "Launching resources outside of the standard regions is prohibited"
+        action_desc: "Actions Taken:  Your new DynamoDB Table has been deleted.  Please recreate in regions us-east-1 or 2."
+        to:
+          - CloudTeam@Company.com
+          - event-owner
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs
+  - name: kinesis-terminate-non-standard-region
+    resource: kinesis
+    mode:
+      type: cloudtrail
+      role: arn:aws:iam::005343251202:role/c7-lambda-admin
+      events:
+        - source: "kinesis.amazonaws.com"
+          event: "CreateStream"
+          ids: "requestParameters.streamName"
+      tags:
+        custodian: kinesis-terminate-non-standard-region
+    description: |
+      Detect when a new Kinesis Stream is created in a non-standard
+      region us-east-2 delete it and notify the customer
+    filters:
+      - type: event
+        key: "detail.awsRegion"
+        op: not-in
+        value:
+          - us-east-2
+          - us-east-1
+    actions:
+      - type: delete
+      - type: notify
+        template: email.html
+        priority_header: 1
+        subject: "KINESIS DELETED - Non-Standard Region [custodian {{ account }} - {{ region }}]"
+        violation_desc: "Launching resources outside of the standard regions is prohibited"
+        action_desc: "Actions Taken:  Your new Kinesis Stream has been deleted.  Please recreate in regions us-east-1 or 2."
+        to:
+          - CloudTeam@Company.com
+          - event-owner
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs
+  - name: firehose-terminate-non-standard-region
+    resource: firehose
+    mode:
+      type: cloudtrail
+      role: arn:aws:iam::005343251202:role/c7-lambda-admin
+      events:
+        - source: "firehose.amazonaws.com"
+          event: "CreateDeliveryStream"
+          ids: "requestParameters.deliveryStreamName"
+      tags:
+        custodian: firehose-terminate-non-standard-region
+    description: |
+      Detect when a new Firehose is created in a non-standard
+      region us-east-2 delete it and notify the customer
+    filters:
+      - type: event
+        key: "detail.awsRegion"
+        op: not-in
+        value:
+          - us-east-2
+          - us-east-1
+    actions:
+      - type: delete
+      - type: notify
+        template: email.html
+        priority_header: 1
+        subject: "FIREHOSE DELETED - Non-Standard Region [custodian {{ account }} - {{ region }}]"
+        violation_desc: "Launching resources outside of the standard regions is prohibited"
+        action_desc: "Actions Taken:  Your new Firehose has been deleted.  Please recreate in regions us-east-1 or 2."
+        to:
+          - CloudTeam@Company.com
+          - event-owner
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs

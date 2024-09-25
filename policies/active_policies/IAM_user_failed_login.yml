@@ -1,0 +1,39 @@
+# this policy might be noisy: will put in personal channel and test
+policies:
+  - name: iam-console-login-detection
+    resource: account
+    description: detect and alarm on IAM Console Login Events
+    mode:
+      type: cloudtrail
+      role: C7_LAMBDA_ROLE
+      events:
+        - ConsoleLogin
+      execution-options:
+        region: us-east-1
+    # filters:
+    # - type: event
+    #   key: "detail.responseElements.ConsoleLogin"
+    #   value: Failure
+    actions:
+      - type: notify
+        slack_msg_color: warning
+        template: slack
+        violation_desc: Console User Login Detected
+        action_desc: "Console User Login Detected"
+        to:
+          - [SLACK TOKEN]
+        transport:
+          type: sqs
+          queue: SQS_URL
+      - type: notify
+        priority_header: '3'
+        template: email.html
+        template_format: 'html'
+        violation_desc: Console User Login Detected
+        action_desc: "Console User Login Detected"
+        subject: "Console User Login Detected in {{ account }} - {{ region }}."
+        to:
+          - RECEPIENT_EMAIL
+        transport:
+          type: sqs
+          queue: SQS_URL

@@ -1,0 +1,12 @@
+queue_url: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs
+role: arn:aws:iam::005343251202:role/c7-lambda-admin
+from_address: user@gmail.com
+slack_webhook: [SLACK TOKEN]
+region: us-east-1
+ses_region: us-east-1
+memory: 128g
+timeout: 120
+lambda_tags:
+  custodian: mailer
+
+# Remember this is 5 minutes so change manually in your account so that it does not run so much.

@@ -1,0 +1,83 @@
+[
+  {
+    "Statement": [
+      {
+        "Action": "sts:AssumeRole",
+        "Effect": "Allow",
+        "Principal": {
+          "Service": [
+            "ec2.amazonaws.com",
+            "lambda.amazonaws.com",
+            "ses.amazonaws.com"
+          ]
+        }
+      }
+    ],
+    "Version": "2012-10-17"
+  },
+  {
+    "Statement": [
+      {
+        "Action": [
+          "codebuild:ListProjects",
+          "health:DescribeEvents",
+          "health:DescribeEventDetails",
+          "events:ListRules",
+          "events:ListTargetsByRule",
+          "sqs:ListQueues"
+        ],
+        "Effect": "Allow",
+        "Resource": "*",
+        "Sid": "ListAllResources"
+      },
+      {
+        "Action": [
+          "sqs:DeleteMessage",
+          "sqs:SendMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:ListDeadLetterSourceQueues",
+          "sqs:DeleteMessage",
+          "sws:ReceiveMessage",
+          "sqs:ReceiveMessage"
+        ],
+        "Effect": "Allow",
+        "Resource": "arn:aws:sqs:us-west-2_______________________SQS",
+        "Sid": "SQSCustodianOwnedWriter"
+      },
+      {
+        "Action": "s3:*",
+        "Effect": "Allow",
+        "Resource": "arn:aws:s3:::___________________/*",
+        "Sid": "S3CustodianOwnedWriter"
+      },
+      {
+        "Action": [
+          "iam:DeleteAccessKey",
+          "iam:UpdateAccessKey",
+          "iam:DeleteLoginProfile"
+        ],
+        "Effect": "Allow",
+        "Resource": "*",
+        "Sid": "IamWriter"
+      },
+      {
+        "Action": [
+          "logs:CreateLogStream",
+          "logs:CreateLogGroup",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups"
+        ],
+        "Effect": "Allow",
+        "Resource": "*",
+        "Sid": "LogWriter"
+      },
+      {
+        "Action": "ec2:CreateTags",
+        "Effect": "Allow",
+        "Resource": "*",
+        "Sid": "EC2Writer"
+      }
+    ],
+    "Version": "2012-10-17"
+  }
+]

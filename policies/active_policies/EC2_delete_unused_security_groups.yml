@@ -1,0 +1,31 @@
+policies:
+  - name: security-groups-unused
+    resource: security-group
+    description: Retrieve unused security groups using regex.
+    # To get a complete list, use value of .*
+    # To get a subset, use a regex pattern.
+    mode:
+      type: periodic
+      schedule: "cron(0 2 15 * ? *)"
+      role: C7_LAMBDA_ROLE
+    filters:
+      - unused
+      - type: value
+        key: GroupName
+        op: regex
+        value: ".*wiz"
+    actions:
+      - type: notify
+        tag: CreatorName
+        slack_msg_color: danger
+        priority_header: '5'
+        template: email.html
+        violation_desc: c7n found unused security groups named Wizard
+        action_desc: "This security group is subject to deletion without warning."
+        subject: "Unused Security Groups named Wizard"
+        to:
+          - RECEPIENT_EMAIL
+          - SLACK_HOOK_URL
+        transport:
+          type: sqs
+          queue: SQS_URL

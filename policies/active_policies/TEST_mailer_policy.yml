@@ -1,0 +1,28 @@
+policies:
+  - name: c7n-mailer-test
+    resource: ec2
+    filters:
+      - "tag:MailerTest": absent
+    actions:
+      - type: notify
+        priority_header: '3'
+        template: email.html
+        template_format: 'html'
+        violation_desc: test policy
+        action_desc: "test policy"
+        subject: "test policy in {{ account }} - {{ region }}."
+        to:
+          - user@gmail.com
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-2.amazonaws.com/005343251202/cloud-custodian-sqs
+      - type: notify
+        slack_msg_color: danger
+        template: slack
+        violation_desc: test policy
+        action_desc: test policy
+        to:
+          - [SLACK TOKEN]
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-2.amazonaws.com/005343251202/cloud-custodian-sqs

@@ -1,0 +1,134 @@
+policies:
+  - name: ec2-old-running-instances-report
+    resource: ec2
+    description: |
+      Report all running for more than 100 days.
+    mode:
+      type: periodic
+      schedule: "cron(0 2 15 * ? *)"
+      role: C7_LAMBDA_ROLE
+      tags:
+        custodian: running-instances-report
+    filters:
+      - "State.Name": running
+      - type: state-age
+        op: ge
+        days: 100
+    actions:
+      - type: tag
+        key: inspection
+        value: "true"
+      - type: notify
+        slack_msg_color: warning
+        template: c7n_slack
+        violation_desc: These instance have been running for 100 days and should be checked, updated, rebooted.
+        action_desc: "EC2 instance tagged for inspection, should be checked, updated, rebooted"
+        to:
+          - SLACK_HOOK_URL
+        transport:
+          type: sqs
+          queue: SQS_URL
+      - type: notify
+        priority_header: '3'
+        template: email.html
+        template_format: 'html'
+        violation_desc: These instance have been running for 100 days and should be checked, updated, rebooted.
+        action_desc: "EC2 instance tagged for inspection, should be checked, updated, rebooted"
+        subject: "These running EC2 instances have been ruuning for 100 days in {{ account }} - {{ region }}."
+        to:
+          - RECEPIENT_EMAIL
+        transport:
+          type: sqs
+          queue: SQS_URL
+  - name: ec2-old-stopped-instances-report
+    resource: ec2
+    mode:
+      type: periodic
+      schedule: "cron(0 2 15 * ? *)"
+      role: C7_LAMBDA_ROLE
+      tags:
+        custodian: stopped-instances-report
+    description: |
+      Report stopped instances older than 365 days.
+    filters:
+      - "State.Name": stopped
+      - type: state-age
+        op: ge
+        days: 365
+    actions:
+      - type: tag
+        key: CreationAge
+        value: "365"
+      - type: tag
+        key: inspection
+        value: "true"
+      - type: notify
+        slack_msg_color: warning
+        template: c7n_slack
+        violation_desc: These EC2 instances have been stopped for 365 days.
+        action_desc: "These EC2 instances have been stopped for 365 days, they should be removed if not needed"
+        to:
+          - SLACK_HOOK_URL
+        transport:
+          type: sqs
+          queue: SQS_URL
+      - type: notify
+        priority_header: '3'
+        template: email.html
+        template_format: 'html'
+        violation_desc: These EC2 instances have been stopped for 365 days.
+        action_desc: "These EC2 instances have been stopped for 365 days, they should be removed if not needed"
+        subject: "These EC2 instances have been stopped for 365 days, they should be removed if not needed in {{ account }} - {{ region }}."
+        to:
+          - RECEPIENT_EMAIL
+        transport:
+          type: sqs
+          queue: SQS_URL
+  - name: old-ami-images-report
+    resource: ami
+    mode:
+      type: periodic
+      schedule: "cron(0 2 15 * ? *)"
+      role: C7_LAMBDA_ROLE
+      tags:
+        custodian: old-ami-images-report
+    description: |
+      Report on all images older than 365 days and not lauched in 365 days which should be de-registered.
+    filters:
+      - type: image-age
+        days: 365
+      - type: image-attribute
+        attribute: lastLaunchedTime
+        key: "Value"
+        op: gte
+        value_type: age
+        value: 365
+    actions:
+      - type: tag
+        key: CreationAge
+        value: "365"
+      - type: tag
+        key: inspection
+        value: "true"
+      - type: notify
+        slack_msg_color: warning
+        template: c7n_slack
+        violation_desc: These AMI images are older than 365 days and not lauched in 365 days
+        action_desc: "images tagged for inspection, and should be deleted if not needed"
+        to:
+          - SLACK_HOOK_URL
+        transport:
+          type: sqs
+          queue: SQS_URL
+      - type: notify
+        priority_header: '3'
+        template: email.html
+        template_format: 'html'
+        violation_desc: These AMI images are older than 365 days and not lauched in 365 days
+        action_desc: "images tagged for inspection, and should be deleted if not needed"
+        subject: "There is an image older than 365 days and not lauched in 365 days in {{ account }} - {{ region }}."
+        to:
+          - RECEPIENT_EMAIL
+        transport:
+          type: sqs
+          queue: SQS_URL

@@ -1,0 +1,47 @@
+policies:
+  # you must have a trail of management events (s3 bucket) for cloudwatch to use
+  # MAKE SURE SQS, SES, AND LAMBDA ALL IN SAME REGION!!!
+  - name: root-login-detected
+    resource: account
+    description: |
+      Notifies on Root User logins in AWS
+    mode:
+      type: cloudtrail
+      role: C7_LAMBDA_ROLE
+      events:
+        - ConsoleLogin
+      tags:
+        custodian: root-login-detected
+    filters:
+      - type: event
+        key: "detail.userIdentity.type"
+        value_type: swap
+        op: in
+        value: Root
+    actions:
+      - type: notify
+        template: email.html
+        priority_header: 1
+        slack_msg_color: danger
+        subject: "Root User Login Detected! - [custodian {{ account }} - {{ region }}]"
+        violation_desc: "A User Has Logged Into the AWS Console With The Root User:"
+        action_desc: |
+          "Please investigate and if needed revoke the root users session along
+          with any other restrictive actions if it is an unapproved root login"
+        to:
+          - RECEPIENT_EMAIL
+        transport:
+          type: sqs
+          queue: SQS_URL
+      - type: notify
+        slack_msg_color: danger
+        template: slack
+        violation_desc: "A User Has Logged Into the AWS Console With The Root User:"
+        action_desc: |
+          "Please investigate and if needed revoke the root users session along
+          with any other restrictive actions if it is an unapproved root login"
+        to:
+          - [SLACK TOKEN]
+        transport:
+          type: sqs
+          queue: SQS_URL

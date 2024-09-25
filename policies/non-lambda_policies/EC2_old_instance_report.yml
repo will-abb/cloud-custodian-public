@@ -1,0 +1,86 @@
+policies:
+  # 1. Report all running instances created more than 1 day ago
+  - name: running-instances-report
+    resource: ec2
+    description: |
+      Notifies on old running instances
+    mode:
+      type: periodic
+      schedule: "cron(0 0 * * ? *)"
+      role: arn:aws:iam::005343251202:role/c7-lambda-admin
+      tags:
+        custodian: running-instances-report
+    comment: |
+      Report all running instances created more than 1 day ago
+    filters:
+      - "State.Name": running
+      - type: instance-age
+        days: 1
+    actions:
+      - type: tag
+        key: CreationAge
+        value: '1'
+      - type: notify
+        slack_msg_color: danger
+        template: slack
+        violation_desc: instances created more than 1 day ago
+        action_desc: "instances created more than 1 day ago, delete them"
+        to:
+          - [SLACK TOKEN]
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs
+      - type: notify
+        priority_header: '3'
+        template: email.html
+        template_format: 'html'
+        violation_desc: instances created more than 1 day ago
+        action_desc: "instances created more than 1 day ago, delete them"
+        subject: "Tinstances created more than 1 day ago in {{ account }} - {{ region }}."
+        to:
+          - user@gmail.com
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs
+  # 3. Report all AMIs that are 30+ days or older
+  - name: old-ami-images-report
+    resource: ami
+    description: |
+      Notifies on old amis
+    mode:
+      type: periodic
+      schedule: "cron(0 0 * * ? *)"
+      role: arn:aws:iam::005343251202:role/c7-lambda-admin
+      tags:
+        custodian: old-ami-images-report
+    comment: |
+      Report on all images older than 30 days which should be de-registered.
+    filters:
+      - type: image-age
+        days: 30
+    actions:
+      - type: tag
+        key: CreationAge
+        value: "30"
+      - type: notify
+        slack_msg_color: danger
+        template: slack
+        violation_desc: These AMI images are older than 30 days
+        action_desc: "images marked for inspection"
+        to:
+          - [SLACK TOKEN]
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs
+      - type: notify
+        priority_header: '3'
+        template: email.html
+        template_format: 'html'
+        violation_desc: These AMI images are older than 30 days
+        action_desc: "images tagged for inspection, delete them"
+        subject: "There is an image older than 30 days in {{ account }} - {{ region }}."
+        to:
+          - user@gmail.com
+        transport:
+          type: sqs
+          queue: https://sqs.us-east-1.amazonaws.com/005343251202/custodian-sqs
